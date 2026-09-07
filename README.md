@@ -1,17 +1,23 @@
 # 🌐 Polymarket AI Predictor & Paper Trading Terminal
 
-> An institutional-grade, Apple-inspired prediction market terminal that bridges decentralized probability feeds with real-time multi-agent AI reasoning and risk-free paper trading execution.
+> Institutional-grade prediction market terminal combining decentralized probability data, real-time multi-agent AI consensus, and zero-risk paper trading execution. Built with Next.js 15, TypeScript, Supabase, and Tailwind CSS.
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.0_App_Router-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Supabase](https://img.shields.io/badge/Database-Supabase_PostgreSQL-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Vitest](https://img.shields.io/badge/Tested_with-Vitest_%26_RTL-6E9F18?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
 ---
 
-## ⚡ Executive Summary (For Stakeholders & Product Leaders)
+## ⚡ Executive Summary
 
-Prediction markets like Polymarket aggregate real-world probabilities through collective capital, yet retail participants face two structural hurdles:
+Prediction markets reflect real-world probabilities through financial consensus, but retail traders often encounter two major barriers:
 
-1. **Information Asymmetry:** Breaking events evolve faster than single retail traders can research and price.
-2. **Execution Friction:** Real capital exposure prevents users from validating strategies or building conviction before trading.
+1. **Information Asymmetry:** Breaking developments outpace manual research, leaving users at a disadvantage against automated participants.
+2. **Capital Risk on Incomplete Data:** Testing thesis execution requires real money, raising the barrier to entry.
 
-**Polymarket AI Predictor** solves this by pairing Polymarket's live Gamma market feeds with a **Multi-Agent AI Consensus Engine** and a **zero-risk Paper Trading Engine**. Users can explore high-volume global markets, monitor simulated multi-step AI due diligence, identify probability edges, and simulate positions with virtual USDC—all inside an interface built around Apple-grade design standards.
+**Polymarket AI Predictor** solves both problems. It continuously pulls live event order-book data from Polymarket's Gamma API, passes contextual market rules through a **3-Agent AI Deliberation Committee** (powered by Tavily Search and Google Gemini), and allows users to simulate positions in a dedicated **Paper Trading Execution Slip** with persistent virtual balances and portfolio tracking.
 
 ---
 
@@ -19,313 +25,218 @@ Prediction markets like Polymarket aggregate real-world probabilities through co
 
 ```mermaid
 graph TD
-  subgraph Client ["Client Tier (Next.js 15 App Router)"]
-    UI["UI Layer / Tailwind CSS"]
-    Feed["Markets Explorer & Sorting"]
-    Drawer["Mobile Drawer / Desktop Sticky Sidebar"]
-    Slip["Paper Trading Order Slip"]
-    Store["Client State / Custom Hooks"]
+  subgraph Client ["Client Presentation Tier (Next.js 15 App Router)"]
+    UI["UI Components / Tailwind CSS"]
+    Feed["Market Discovery & Custom Sort Dropdown"]
+    Committee["AI Deliberation Panel (3 Agents)"]
+    Slip["Execution Slip (Dynamic Math & Outcomes)"]
+    PortfolioModal["Portfolio & Bet History Modal"]
+    BalanceHook["Unified Balance & Realtime Sync"]
   end
 
-  subgraph Edge ["Next.js Server & Route Handlers"]
-    APIMarkets["/api/markets"]
-    APIAnalyze["/api/analyze-market"]
+  subgraph Edge ["Serverless Edge Handlers"]
+    APIMarkets["/api/markets (Cache & Aggregation)"]
+    APIAnalyze["/api/analyze-market (Multi-Agent Synthesis)"]
   end
 
-  subgraph External ["External Intelligence & APIs"]
-    Poly["Polymarket Gamma API"]
-    Tavily["Tavily Search API (Live News)"]
-    Gemini["Google Gemini LLM (Analyst Consensus)"]
+  subgraph ExternalServices ["External Intelligence & Data"]
+    Poly["Polymarket Gamma REST API"]
+    Tavily["Tavily Search API (Live News Grounding)"]
+    Gemini["Google Gemini API (Reasoning & Consensus)"]
   end
 
-  subgraph Persistence ["Persistence Layer (Supabase)"]
-    DB[(PostgreSQL)]
-    TableBets["bets (Order Book & Trades)"]
-    TableUsers["profiles (Virtual Balances)"]
+  subgraph Persistence ["Persistence Layer (Supabase PostgreSQL)"]
+    DB[(PostgreSQL 15+)]
+    ProfilesTable["public.profiles (Virtual Balances)"]
+    BetsTable["public.bets (Dynamic Outcome Orders)"]
   end
 
-  UI --> Store
-  Store --> Feed
-  Store --> Drawer
-  Store --> Slip
-
+  UI --> Feed
+  Feed --> Committee
+  Committee --> Slip
+  Slip --> PortfolioModal
   Feed -->|Fetch Active Markets| APIMarkets
-  APIMarkets -->|Query Markets & Sort| Poly
-
-  Drawer -->|Trigger AI Review| APIAnalyze
-  APIAnalyze -->|Live News Retrieval| Tavily
-  APIAnalyze -->|Multi-Agent Synthesis| Gemini
-
-  Slip -->|Execute Paper Trade| TableBets
-  Slip -->|Update Balance| TableUsers
+  APIMarkets -->|Query & Normalize| Poly
+  Committee -->|Trigger Deliberation| APIAnalyze
+  APIAnalyze -->|Context Retrieval| Tavily
+  APIAnalyze -->|Structured Consensus| Gemini
+  Slip -->|Insert Trade| BetsTable
+  Slip -->|Atomic Balance Deduction| ProfilesTable
+  ProfilesTable -.->|Reactive Sync| BalanceHook
+  BalanceHook --> UI
 ```
 
 ---
 
-## 🔄 End-to-End Decision Flow
+## 🔄 End-to-End Execution Sequence
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor User
-  participant App as Client UI
-  participant Server as Next.js API
+  actor Trader as User / Analyst
+  participant Client as Web App (Client)
+  participant API as Next.js Route Handlers
   participant Poly as Polymarket API
   participant AI as AI Engine (Tavily + Gemini)
-  participant DB as Supabase DB
+  participant DB as Supabase (PostgreSQL)
 
-  User->>App: Opens Feed & applies sorting (Volume, Ending Soon)
-  App->>Server: GET /api/markets?sort=volume&category=politics
-  Server->>Poly: Query active, unclosed events
-  Poly-->>Server: Return raw events & outcomePrices
-  Server-->>App: Normalized market payload
-  User->>App: Selects market card
-  Note over App: Desktop: Updates sticky panel<br/>Mobile: Opens slide-over drawer
-  App->>Server: POST /api/analyze-market (marketId, question, rules)
-  Note over App: Displays staged loader:<br/>1. Indexing news -> 2. Reasoning -> 3. Consensus
-  Server->>AI: Fetch real-time web context & synthesize consensus
-  AI-->>Server: Recommendation, Confidence %, and Rationale
-  Server-->>App: Render AI analysis card
-  User->>App: Enters amount, picks outcome, clicks "Place Bet"
-  App->>DB: Insert record to `bets` & deduct virtual balance
-  DB-->>App: Transaction confirmed
-  Note over App: Displays toast & auto-dismisses mobile drawer
+  Trader->>Client: Selects market card & filters by sort criteria
+  Client->>API: GET /api/markets?sort=volume&category=all
+  API->>Poly: Query active & unclosed events
+  Poly-->>API: Raw market payload with JSON string arrays
+  API-->>Client: Normalized entities (parsed outcomes & clean prices)
+
+  Trader->>Client: Opens Market Detail
+  Client->>API: POST /api/analyze-market (question, rules, outcomes)
+  Note over Client: Displays staged agent deliberation progress...
+  API->>AI: Tavily indexes latest news -> Gemini synthesizes consensus
+  AI-->>API: Structured consensus payload (agent votes + rationale)
+  API-->>Client: Render 3 Agent Roster & Consensus Verdict
+
+  Trader->>Client: Clicks "Apply Consensus to Bet Slip"
+  Client->>Client: Auto-selects outcome tab & recalculates shares
+  Trader->>Client: Inputs stake ($85.00 USDC) & submits order
+  Client->>DB: INSERT into `bets` & UPDATE `profiles.virtual_balance`
+  DB-->>Client: Commit confirmed (Balance: $1000.00 -> $915.00)
+  Client->>Client: Updates balance chip & unlocks "My Portfolio" entry
 ```
 
 ---
 
-## 🧠 Multi-Agent AI Deliberation Engine: How Agents Work & Decide
+## 🔬 Core Engineering Highlights
 
-Rather than relying on a single monolithic LLM prompt that suffers from bias, hallucinations, and uncalibrated probabilities, the terminal employs a **modular 3-Agent Deliberation Architecture**. This simulates an institutional investment committee where specialized AI personas independently examine the market across orthogonal analytical dimensions before synthesizing a unified consensus:
+### 1. Multi-Agent AI Deliberation Committee
+Instead of a generic single-prompt chat interaction, analysis is decoupled across three specialized autonomous perspectives:
+- **Resolution Auditor (`ShieldCheck`):** Scrutinizes the contract's official resolution rules to flag ambiguity, settlement conditions, and edge-case dispute traps.
+- **Sentiment & News Hunter (`Newspaper`):** Calls Tavily API to extract clean, un-hallucinated facts from real-time news sources published in the last 24 hours.
+- **Risk & Value Arbiter (`TrendingUp`):** Weighs implied market odds against empirical likelihood to detect positive expected value (+EV) and margin of safety.
+- **Interactive Handoff:** Includes a high-contrast **"Apply Consensus to Bet Slip"** action that bridges the committee's findings directly into the trading form.
 
-```mermaid
-graph LR
-  subgraph Inputs ["Input Ingestion"]
-    MktData["Polymarket Market Rules & Implied Odds"]
-    LiveNews["Tavily RAG Live News Stream"]
-  end
+### 2. Resilient Polymarket Data Normalization
+Polymarket's Gamma API delivers polymorphic data structures: outcomes and outcomePrices often arrive as stringified JSON arrays (e.g. `'["Yes", "No"]'`) or custom multi-choice options (`'["Over 2.5", "Under 2.5"]'`).
+- **Defensive Parsing:** An edge sanitization utility parses nested stringified payloads with fallback guarantees.
+- **Dynamic Contract Adaptation:** Completely moves away from binary assumptions. Labels, order slip tabs, and database records adapt dynamically to the market's real outcome terms.
+- **Semantic Palette Assignment:** Programmatically assigns affirmative/first-position choices to emerald tokens and opposing/secondary choices to rose tokens.
 
-  subgraph Committee ["3-Agent Deliberation Committee"]
-    A1["🛡️ Resolution Auditor<br/>• Contract Terms & Criteria<br/>• Ambiguity Detection<br/>• Settlement Source Verification"]
-    A2["📰 Sentiment & News Hunter<br/>• Breaking Catalyst Extraction<br/>• Real-Time Reporting<br/>• Multi-Source Cross-Check"]
-    A3["📐 Risk & Value Arbiter<br/>• Implied vs True Probability<br/>• +EV Discrepancy Matrix<br/>• Kelly Sizing Calibration"]
-  end
+### 3. Unified Balance State & Portfolio Ledger
+- **Atomic Balance Management:** Synchronized state across navigation indicators, slip validation, and Supabase ledger entries.
+- **Dynamic Database Constraints:** Removed restrictive legacy `CHECK (outcome IN ('YES', 'NO'))` constraints in PostgreSQL to store full dynamic outcome labels safely.
+- **My Portfolio Modal:** Real-time ledger view allowing traders to track position sizes, entry prices, potential returns, and historical timestamps.
 
-  subgraph Consensus ["Consensus Synthesis"]
-    Syn["Gemini Structured Synthesis Engine"]
-    Out["Deterministic Execution Recommendation<br/>Outcome + Conviction % + +EV Edge + Sizing"]
-  end
+### 4. Apple-Grade Human Interface Engineering
+- **Desktop vs. Mobile Viewport Isolation:** Two-column sticky split on desktop transitions into an accessible slide-over drawer on mobile, utilizing guarded `document.body.style.overflow` locking that never hijacks desktop scroll behavior.
+- **Custom Sort Popover:** Replaced default browser select tags with an accessible, keyboard-navigable popover dropdown supporting **Volume**, **Ending Soon** (filtering out expired events), and **Newest**.
+- **Floating Quick-Actions:** A throttled, smooth-scrolling "Back to Top" pill docked cleanly inside the content column.
 
-  MktData --> A1
-  LiveNews --> A2
-  MktData --> A3
-  LiveNews --> A3
+---
 
-  A1 --> Syn
-  A2 --> Syn
-  A3 --> Syn
-  Syn --> Out
-```
+## 🛠️ Architecture & Engineering Trade-offs
 
-### 1. Committee Personas & Division of Labor
-
-| Agent Persona | Focus Domain | Primary Sources & Heuristics | Decision Output |
+| Decision Point | Choice Made | Alternative Considered | Engineering Rationale |
 | :--- | :--- | :--- | :--- |
-| **🛡️ Resolution Auditor** | Rules, Settlement Criteria & Contract Integrity | Polymarket contract terms, resolution sources (AP, BLS, SEC, government gazettes), expiration timestamps, and conditional clauses. | Validates resolution viability, assesses settlement dispute risk, and votes on outcome conformity with strict contractual criteria. |
-| **📰 Sentiment & News Hunter** | Live Ground Truth & External Signals | Tavily Search API (real-time news indexing, journalistic articles, breaking wires, press releases, and polling datasets). | Identifies catalysts, filters noise from factual developments, cross-references source reliability, and extracts real-time sentiment direction. |
-| **📐 Risk & Value Arbiter** | Mathematical Edge & Portfolio Sizing | Order book pricing ($P_{\text{market}}$), implied probability distribution, Fractional Kelly Criterion, and asymmetric risk/reward. | Calculates expected value ($+EV$), identifies pricing dislocations between market odds and committee conviction, and computes optimal position size. |
+| **Data Fetching Layer** | Next.js Server Handlers (`/api/*`) | Client-side direct fetching | Hides sensitive API tokens (Tavily/Gemini), enables server-side response caching, and prevents CORS and payload bloat on mobile clients. |
+| **Testing Framework** | Vitest + React Testing Library | Jest | Native ESM and TypeScript support with shared Vite configuration, achieving sub-second test runs without complex Babel transpilation. |
+| **AI Context Ingestion** | Tavily API | Direct Google Search / Web Scraping | Bypasses anti-bot barriers, cookie consent walls, and token-heavy HTML noise by extracting clean markdown content directly for LLM consumption. |
+| **Outcome Model** | Dynamic String Arrays | Binary Boolean Flags (`isYes`) | Supports real-world categorical markets (e.g., elections, over/under spreads) without breaking data contracts or database constraints. |
+| **State Persistence** | Supabase Postgres + Realtime | LocalStorage / In-Memory State | Provides true cross-device session persistence, transactional balance integrity, and audit-ready paper trading records. |
 
 ---
 
-### 2. The 5-Phase Deliberation & Decision Pipeline
+## 🧪 Comprehensive Test Suite
 
+The test suite is built on **Vitest** and **React Testing Library**, prioritizing numerical precision, data resilience, and defensive UI states:
+
+```bash
+# Run test suite
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
 ```
-[Phase 1: Ingestion] ──▶ [Phase 2: RAG Retrieval] ──▶ [Phase 3: Agent Scrutiny] ──▶ [Phase 4: Consensus] ──▶ [Phase 5: Slip Routing]
-```
 
-1. **Phase 1: Contract Ingestion & Parameter Normalization**
-   - When a market is selected, the application ingests the market payload from Polymarket's Gamma API.
-   - Extracts the core question, detailed description/rules, resolution timestamp (`endDate`), outcome token identifiers (`clobTokenIds`), and live trading prices.
-   - Dynamically parses outcome identifiers (e.g., `["Yes", "No"]`, `["Over 2.5", "Under 2.5"]`, or candidate names) to eliminate binary assumptions.
-
-2. **Phase 2: Live News Retrieval (Tavily RAG)**
-   - The route handler `/api/analyze-market` queries the Tavily API using high-authority news filtering.
-   - Extracts validated article snippets, publication timestamps, and source URLs.
-   - This grounds the AI in up-to-the-minute real-world events, ensuring recommendations reflect developments that occurred minutes prior rather than static pre-training weights.
-
-3. **Phase 3: Multi-Perspective Agent Deliberation**
-   - **Resolution Auditor:** Interrogates whether the condition is objectively verifiable. For example, in a geopolitical market: *"Does the contract require official treaty ratification or merely a signed ceasefire declaration?"* Ambiguity triggers a confidence penalty.
-   - **News Hunter:** Analyzes real-time reporting for confirmed milestones. Disregards partisan editorializing, extracts verifiable consensus facts, and weights corroborating reports.
-   - **Value Arbiter:** Formulates an unconstrained probability distribution $P_{\text{true}}$ and compares it directly with market pricing.
-
-4. **Phase 4: Structured Consensus Synthesis (Gemini Engine)**
-   - Google Gemini receives a multi-agent system prompt combining contract specifications and indexed news context.
-   - Enforces a deterministic JSON Schema via Gemini's Structured Outputs (`Type.OBJECT`):
-     ```typescript
-     interface AIRecommendation {
-       recommendedOutcome: 'YES' | 'NO';
-       confidence: number;         // 0 - 100 percentage
-       rationale: string;          // 2-3 sentence executive synthesis
-       recommendedBetSize: number; // 1 - 100 USDC (Kelly-proportional)
-     }
-     ```
-   - The model acts as the Committee Chair, reconciling differing views into a unified consensus recommendation.
-
-5. **Phase 5: Execution Sizing & One-Click Routing**
-   - The client renders the verdict card, detailing the individual agent votes, source counts, and calculated $+EV$ edge.
-   - Clicking **"Apply Consensus to Bet Slip"** injects the recommended outcome and position size directly into the order form and smoothly focuses the execution input.
+### Tested Modules
+- **[`tests/unit/betMath.test.ts`](tests/unit/betMath.test.ts):** Validates share derivation ($Amount / Price), $1.00 USDC terminal payout resolutions, percentage ROI calculations, and edge cases (zero/negative amounts, pricing boundaries).
+- **[`tests/unit/polymarketNormalize.test.ts`](tests/unit/polymarketNormalize.test.ts):** Verifies JSON-stringified outcome parsing, corrupt payload fallbacks, and multi-condition market sorting (`ending_soon` temporal filtering).
+- **[`tests/components/BetSlip.test.tsx`](tests/components/BetSlip.test.tsx):** Asserts reactive outcome badge styling, dynamic label injections, and balance-defensive disabled states.
 
 ---
 
-### 3. Mathematical Edge Formulation & Position Sizing
-
-The Committee does not simply predict *"Who will win?"*—it identifies **pricing inefficiencies** ($+EV$ opportunities).
-
-#### A. Market Implied Probability vs. Committee Conviction
-Given the contract price for outcome $i$, the market's implied probability is:
-$P_{\text{implied}} = \text{Price}_i \times 100\%$
-
-If the consensus conviction $P_{\text{conviction}} > P_{\text{implied}}$, a positive expected value edge exists:
-$\text{EV Edge (\%)} = P_{\text{conviction}} - P_{\text{implied}}$
-
-*Example:* If YES trades at **42¢** ($P_{\text{implied}} = 42\%$) but the Committee calculates a **60% conviction** based on breaking polling data, the market is mispricing the asset by **+18% EV Edge**.
-
-#### B. Fractional Kelly Criterion for Position Sizing
-To prevent portfolio ruin while compounding capital, the Value Arbiter applies a conservative **Fractional Kelly** sizing heuristic:
-$f^* = \frac{b \cdot p - q}{b}$
-Where:
-- $p = \text{Assessed probability of winning}$
-- $q = 1 - p$
-- $b = \text{Net odds received} = \frac{1 - \text{Price}}{\text{Price}}$
-
-The system normalizes this fractional stake into a calibrated allocation between **\$1.00 and \$100.00 USDC**, scaling conservatively when conviction is marginal and aggressively when high-conviction dislocations are discovered.
-
----
-
-### 4. Anti-Hallucination & Determinism Guardrails
-
-- **Zero-Unchecked-Knowledge Policy:** If breaking news is unavailable, the system explicitly acknowledges missing external context and bases its confidence strictly on base rates and contract ambiguity risks.
-- **Strict JSON Schema Enforcement:** Gemini generation uses `responseMimeType: 'application/json'` with an enforced typed schema, preventing markdown formatting drift, conversational filler, or parsing crashes.
-- **Dynamic Outcome Alignment:** Outcomes are mapped programmatically back to the market's specific contract outcome array, preventing YES/NO inversion on negatively framed questions (e.g., *"Will X fail to happen?"*).
-- **Client-Side Cache Layer:** Deliberation results are indexed client-side by `market.id` to prevent redundant LLM invocations and guarantee instant re-renders when navigating between markets.
-
----
-
-## 🚀 Key Features
-
-### 1. Market Feed & Dynamic Normalization
-- **Full Polymarket Ingestion:** Direct integration with Polymarket’s Gamma API with server-side normalization for variable payloads.
-- **Dynamic Outcome Parsing:** Automatically handles binary (YES/NO), categorical (Candidate A/Candidate B), and metric-driven markets (Over/Under) directly from outcomes arrays.
-- **Multi-Vector Sorting:** Instant sorting across Highest Volume, Ending Soon (filtering strictly non-expired timestamps), and Newest Markets.
-- **Category Overflow Navigation:** Horizontal carousel navigation with smooth gradient masks and responsive directional triggers.
-
-### 2. Multi-Agent AI Consensus
-- **Staged Pipeline Animation:** Transparent, multi-step visual progress tracking (News indexing via search -> Analyst agent verification -> Quantitative consensus calculation) that eliminates perceived latency.
-- **Synthesized Rationales:** Context-aware, 2-to-3 sentence executive summaries detailing the fundamental driver behind current odds.
-- **Direct Slip Injection:** One-click transfer of AI recommendations directly into the execution slip.
-
-### 3. High-Fidelity Paper Trading Slip
-- **Real-Time Math:** Automatic calculation of acquired shares, execution price, and potential payout based on contract pricing tokens (`clobTokenIds`).
-- **One-Tap Quick Sizing:** Preset position allocations (+$10, +$50, +$100, Max).
-- **External Deep Linking:** Instant access to the underlying Polymarket contract via customized "Trade on Polymarket ↗" routing.
-- **State Persistence:** Persistent virtual balance ($1,000.00 USDC starter) and order history backed by Supabase.
-
-### 4. Apple-Grade Responsive Interface
-- **Refined Light Aesthetic:** Light ceramic palette (`#ffffff`, `#f5f5f7`), 1px structural borders (`#e5e5ea`), and subtle drop shadows.
-- **Translucent Semantic Indicators:** High-contrast text highlights with alpha-channel background containers for odds.
-- **Adaptive Viewport Architecture:** Two-column sticky split on desktop (`lg:`) shifting seamlessly to an accessible full slide-over drawer on mobile viewports with body-scroll locking safeguards.
-
----
-
-## 🛠️ Tech Stack & Engineering Decisions
-
-| Layer | Technology | Decision Rationale |
-| :--- | :--- | :--- |
-| **Framework** | Next.js 15 (App Router) | Hybrid SSR/CSR architecture for optimized initial paint and edge API route security. |
-| **Language** | TypeScript 5 (Strict) | Strict schema guarantees across messy third-party contract payloads and database schemas. |
-| **Styling** | Tailwind CSS | Atomic token control matching precise Apple Human Interface Guidelines and alpha colors. |
-| **Database** | Supabase (PostgreSQL) | Low-latency relational storage with Row-Level Security (RLS) for user portfolios and bet logs. |
-| **AI Layer** | Google Gemini + Tavily | High-speed semantic synthesis paired with real-time news indexing for non-hallucinatory consensus. |
-| **Tooling** | Google Stitch & Antigravity | Rapid design system prototyping exported into pixel-perfect implementation code. |
-
----
-
-## 📊 Data Schema (Supabase)
+## 🗄️ Database Schema (Supabase PostgreSQL)
 
 ```sql
--- Bets Table: Tracks paper trading execution
+-- Profiles table for user balances
+create table public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  username text default 'Demo Trader',
+  virtual_balance numeric(12, 2) default 1000.00 not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Bets table supporting dynamic multi-outcome positions
 create table public.bets (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade,
+  profile_id uuid references public.profiles(id) on delete cascade,
   market_id text not null,
   market_question text not null,
-  outcome text not null,               -- Dynamic label (e.g., "YES", "Over 2.5", "Trump")
-  amount numeric not null,              -- Amount staked in USDC
-  price numeric not null,               -- Price per share at time of execution
-  shares numeric not null,              -- Total contracts acquired
-  status text default 'open',           -- 'open' | 'resolved_win' | 'resolved_loss'
-  ai_assisted boolean default false,
+  outcome text not null,
+  amount numeric(10, 2) not null check (amount > 0),
+  price numeric(4, 2) not null check (price > 0 and price <= 1.00),
+  shares numeric(12, 2) not null check (shares > 0),
+  potential_payout numeric(12, 2) not null,
+  status text default 'OPEN' check (status in ('OPEN', 'WON', 'LOST', 'REFUNDED')),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   constraint bets_outcome_check check (length(trim(outcome)) > 0)
 );
 
--- Note: If updating an existing table, run:
--- alter table public.bets drop constraint if exists bets_outcome_check;
--- alter table public.bets add constraint bets_outcome_check check (length(trim(outcome)) > 0);
+-- Row Level Security (RLS)
+alter table public.profiles enable row level security;
+alter table public.bets enable row level security;
 
--- Profiles Table: Manages virtual balances
-create table public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  virtual_balance numeric default 1000.00 not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
+create policy "Public read profiles" on public.profiles for select using (true);
+create policy "Users update own balance" on public.profiles for update using (true);
+create policy "Public read bets" on public.bets for select using (true);
+create policy "Public insert bets" on public.bets for insert with check (true);
 ```
 
 ---
 
-## 💻 Local Development Setup
+## 🚀 Getting Started
 
-### 1. Prerequisites
-- Node.js 18.17+ or Node.js 20+
-- A Supabase Project (or local Supabase CLI)
-- API Keys: Polymarket (Public Gamma), Tavily API, and Google Gemini API
-
-### 2. Installation
+### 1. Clone & Install Dependencies
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/polymarket-ai-predictor.git
-cd polymarket-ai-predictor
-
-# Install dependencies
+git clone https://github.com/your-username/polymarket-ai-widget.git
+cd polymarket-ai-widget
 npm install
 ```
 
-### 3. Environment Variables
-Create a `.env.local` file in the root directory:
+### 2. Environment Variables Setup
+Create `.env.local` in the project root:
 ```env
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
-# AI Intelligence
-GEMINI_API_KEY=your-gemini-api-key
+# Single Source of Truth Demo Profile (Optional override)
+NEXT_PUBLIC_DEMO_USER_ID=f07d5b04-96ab-4fd7-97ad-fc1056644be1
+
+# AI Intelligence & Retrieval
+GEMINI_API_KEY=your-google-gemini-api-key
 TAVILY_API_KEY=your-tavily-api-key
 
-# Polymarket Gamma API Endpoint
+# Public Polymarket Endpoints
 NEXT_PUBLIC_POLYMARKET_API_URL=https://gamma-api.polymarket.com
 ```
 
-### 4. Run Development Server
+### 3. Build & Verify
 ```bash
+# Verify type integrity and production build
+npm run build
+
+# Run unit tests
+npm run test
+
+# Launch development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000/) to view the terminal.
-
----
-
-## 🔮 Roadmap
-
-- [ ] **+EV (Expected Value) Discrepancy Engine:** Algorithmic calculation of variance between consensus odds and market pricing to highlight actionable arbitrage.
-- [ ] **Dialectic Bull vs. Bear Debate:** Split agent architecture highlighting opposing arguments with explicit source citations.
-- [ ] **Brier Score Historical Tracking:** Empirical calibration analytics tracking AI accuracy against realized market outcomes.
+Navigate to [http://localhost:3000](http://localhost:3000) to interact with the terminal.
