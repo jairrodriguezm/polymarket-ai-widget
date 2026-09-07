@@ -14,16 +14,20 @@ import type { Market, AIRecommendation, Bet } from '@/types';
 
 import { DEMO_USER_ID } from '@/lib/constants';
 
-interface BetSlipProps {
+export interface BetSlipProps {
   market: Market;
-  appliedRecommendation: AIRecommendation | null;
+  appliedRecommendation?: AIRecommendation | null;
   onBetPlaced?: () => void;
+  onPlaceBet?: (amount: number) => void;
+  virtualBalance?: number;
 }
 
-export default function BetSlip({
+export function BetSlip({
   market,
-  appliedRecommendation,
+  appliedRecommendation = null,
   onBetPlaced,
+  onPlaceBet,
+  virtualBalance: propVirtualBalance,
 }: BetSlipProps) {
   const outcomes =
     Array.isArray(market.outcomes) && market.outcomes.length > 0
@@ -45,7 +49,11 @@ export default function BetSlip({
   const [amount, setAmount] = useState<string>(
     appliedRecommendation?.recommendedBetSize?.toString() ?? '50',
   );
-  const { virtualBalance, profileId, recordBet } = usePortfolio();
+  const portfolio = usePortfolio();
+  const virtualBalance =
+    propVirtualBalance !== undefined ? propVirtualBalance : portfolio.virtualBalance;
+  const profileId = portfolio.profileId;
+  const recordBet = portfolio.recordBet;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +148,7 @@ export default function BetSlip({
 
       setSuccess(true);
       onBetPlaced?.();
+      onPlaceBet?.(parsedAmount);
 
       // Auto-dismiss success after 4 seconds
       setTimeout(() => setSuccess(false), 4000);
@@ -206,7 +215,7 @@ export default function BetSlip({
               : 'bg-zinc-100/70 border border-zinc-200/60 text-zinc-600 hover:bg-zinc-100 font-medium',
           )}
         >
-          <span className="truncate">BUY {outcome0.toUpperCase()}</span>
+          <span className="truncate">BUY <span className="font-semibold">{outcome0}</span></span>
           <span>•</span>
           <span className="font-mono shrink-0">{cents0}¢</span>
         </button>
@@ -220,7 +229,7 @@ export default function BetSlip({
               : 'bg-zinc-100/70 border border-zinc-200/60 text-zinc-600 hover:bg-zinc-100 font-medium',
           )}
         >
-          <span className="truncate">BUY {outcome1.toUpperCase()}</span>
+          <span className="truncate">BUY <span className="font-semibold">{outcome1}</span></span>
           <span>•</span>
           <span className="font-mono shrink-0">{cents1}¢</span>
         </button>
@@ -244,6 +253,7 @@ export default function BetSlip({
             type="number"
             min="1"
             step="1"
+            placeholder="0.00"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="w-full bg-[#fbfbfd] border border-[#e5e5ea] focus:border-[#0071e3] rounded-xl pl-8 pr-16 py-2.5 text-base font-mono font-bold text-[#111113] focus:outline-none focus:ring-2 focus:ring-[#0071e3]/20 transition-all"
@@ -294,19 +304,16 @@ export default function BetSlip({
           <span>Contracts / Shares</span>
           <span className="font-mono font-medium text-[#111113]">
             {shares > 0 ? (
-              <>
-                {shares.toFixed(2)}{' '}
-                <span
-                  className={cn(
-                    'text-[11px] font-semibold px-1.5 py-0.5 rounded border',
-                    isAffirmative
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-                  )}
-                >
-                  {selectedOutcomeLabel}
-                </span>
-              </>
+              <span
+                className={cn(
+                  'text-[11px] font-semibold px-1.5 py-0.5 rounded border',
+                  isAffirmative
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+                )}
+              >
+                {shares.toFixed(2)} {selectedOutcomeLabel}
+              </span>
             ) : (
               '0.00'
             )}
@@ -360,6 +367,7 @@ export default function BetSlip({
       {/* Primary Action: Solid Apple Blue Button */}
       <button
         type="button"
+        aria-label={`Place Bet on ${selectedOutcomeLabel}`}
         onClick={handlePlaceBet}
         disabled={isSubmitting || parsedAmount <= 0 || isInsufficientBalance}
         className={cn(
@@ -394,18 +402,8 @@ export default function BetSlip({
           rel="noopener noreferrer"
           className="group w-full py-2.5 px-4 rounded-xl bg-zinc-100/80 border border-zinc-200/70 text-zinc-700 text-xs font-medium tracking-tight flex items-center justify-center gap-1.5 transition-all duration-150 hover:bg-zinc-200/70 hover:border-zinc-300 hover:text-zinc-900 active:bg-zinc-200 active:scale-[0.99] antialiased"
         >
-          <span>
-            Trade{' '}
-            <strong
-              className={
-                outcomeIndex === 0
-                  ? 'text-emerald-600 font-semibold'
-                  : 'text-rose-600 font-semibold'
-              }
-            >
-              {selectedOutcomeLabel}
-            </strong>{' '}
-            on Polymarket
+          <span className="truncate">
+            Trade {selectedOutcomeLabel} on Polymarket
           </span>
           <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-700 transition-colors" />
         </a>
@@ -419,3 +417,5 @@ export default function BetSlip({
     </div>
   );
 }
+
+export default BetSlip;

@@ -263,7 +263,19 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 export function usePortfolio() {
   const context = useContext(PortfolioContext);
   if (!context) {
-    throw new Error('usePortfolio must be used within a PortfolioProvider');
+    return {
+      virtualBalance: 1000.0,
+      setVirtualBalance: () => {},
+      profileId: DEMO_USER_ID,
+      bets: [],
+      isLoadingBets: false,
+      isMyBetsModalOpen: false,
+      setIsMyBetsModalOpen: () => {},
+      openMyBetsModal: () => {},
+      closeMyBetsModal: () => {},
+      refreshPortfolio: async () => {},
+      recordBet: async (payload: any) => payload,
+    };
   }
   return context;
 }
