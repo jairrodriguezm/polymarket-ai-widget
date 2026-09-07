@@ -9,74 +9,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { supabase } from '@/lib/supabase';
+import { usePortfolio } from '@/context/PortfolioContext';
 import type { Market, AIRecommendation, Bet } from '@/types';
 
-const INITIAL_BALANCE = parseFloat(
-  process.env.NEXT_PUBLIC_INITIAL_BALANCE ?? '1000',
-);
-const DEMO_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
+import { DEMO_USER_ID } from '@/lib/constants';
 
 interface BetSlipProps {
   market: Market;
   appliedRecommendation: AIRecommendation | null;
   onBetPlaced?: () => void;
-}
-
-/**
- * Defensively fetches the demo profile without throwing PGRST116 when empty,
- * automatically seeding the default demo profile on the fly if needed.
- */
-async function fetchOrCreateDemoProfile(): Promise<{
-  id: string;
-  virtual_balance: number;
-}> {
-  try {
-    const { data: profiles, error: fetchErr } = await supabase
-      .from('profiles')
-      .select('id, virtual_balance')
-      .limit(1);
-
-    if (fetchErr) {
-      console.warn('[BetSlip] Profile fetch notice:', fetchErr.message);
-    }
-
-    let currentProfile = profiles?.[0];
-
-    // If no profile exists, auto-create the default demo profile on the fly
-    if (!currentProfile) {
-      const { data: newProfile, error: insertErr } = await supabase
-        .from('profiles')
-        .insert({
-          id: DEMO_PROFILE_ID,
-          username: 'Demo Trader',
-          virtual_balance: INITIAL_BALANCE,
-        })
-        .select('id, virtual_balance')
-        .single();
-
-      if (insertErr) {
-        console.warn(
-          '[BetSlip] Profile auto-creation fallback:',
-          insertErr.message,
-        );
-        return { id: DEMO_PROFILE_ID, virtual_balance: INITIAL_BALANCE };
-      }
-
-      if (newProfile) {
-        currentProfile = newProfile;
-      }
-    }
-
-    return (
-      currentProfile ?? {
-        id: DEMO_PROFILE_ID,
-        virtual_balance: INITIAL_BALANCE,
-      }
-    );
-  } catch (err) {
-    console.warn('[BetSlip] Profile resolution fallback:', err);
-    return { id: DEMO_PROFILE_ID, virtual_balance: INITIAL_BALANCE };
-  }
 }
 
 export default function BetSlip({
@@ -104,32 +45,10 @@ export default function BetSlip({
   const [amount, setAmount] = useState<string>(
     appliedRecommendation?.recommendedBetSize?.toString() ?? '50',
   );
-  const [profile, setProfile] = useState<{
-    id: string;
-    virtual_balance: number;
-  } | null>(null);
+  const { virtualBalance, profileId, recordBet } = usePortfolio();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Fetch or create demo profile on mount
-  useEffect(() => {
-    let isMounted = true;
-    async function loadProfile() {
-      try {
-        const prof = await fetchOrCreateDemoProfile();
-        if (isMounted) {
-          setProfile(prof);
-        }
-      } catch (err) {
-        console.error('[BetSlip] Failed to load profile:', err);
-      }
-    }
-    loadProfile();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   // Sync state when recommendation is applied externally or market changes
   useEffect(() => {
@@ -154,14 +73,18 @@ export default function BetSlip({
   const parsedAmount = parseFloat(amount) || 0;
   const outcomeIndex = Math.max(0, outcomes.indexOf(outcome));
   const selectedOutcomeLabel = outcomes[outcomeIndex] || outcome0;
+  const isAffirmative =
+    outcomeIndex === 0 ||
+    outcome.toLowerCase() === 'yes' ||
+    selectedOutcomeLabel.toLowerCase() === 'yes';
+
+  const isInsufficientBalance = parsedAmount > virtualBalance;
 
   const price = market.outcomePrices[outcomeIndex] ?? 0.5;
   const shares = price > 0 ? parsedAmount / price : 0;
   const potentialPayout = shares; // Each winning share pays $1 USDC
   const potentialProfit = potentialPayout - parsedAmount;
   const profitPercentage = parsedAmount > 0 ? (potentialProfit / parsedAmount) * 100 : 0;
-
-  const currentBalance = profile?.virtual_balance ?? INITIAL_BALANCE;
 
   const price0 = market.outcomePrices?.[0] ?? 0.5;
   const price1 = market.outcomePrices?.[1] ?? (1 - price0);
@@ -171,12 +94,12 @@ export default function BetSlip({
   // Preset increment handlers
   const handleAddAmount = (addVal: number) => {
     const cur = parseFloat(amount) || 0;
-    const next = Math.min(cur + addVal, currentBalance);
+    const next = Math.min(cur + addVal, virtualBalance);
     setAmount(next.toFixed(0));
   };
 
   const handleMaxAmount = () => {
-    setAmount(currentBalance.toFixed(0));
+    setAmount(virtualBalance.toFixed(0));
   };
 
   const handlePlaceBet = async () => {
@@ -185,29 +108,25 @@ export default function BetSlip({
       return;
     }
 
+    if (parsedAmount > virtualBalance) {
+      setError(
+        `Insufficient virtual balance. Available: $${virtualBalance.toFixed(2)} USDC, Attempted: $${parsedAmount.toFixed(2)} USDC.`,
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
 
     try {
-      const activeProfile = await fetchOrCreateDemoProfile();
-      setProfile(activeProfile);
-
-      const profileId = activeProfile.id;
-      const liveBal = activeProfile.virtual_balance ?? INITIAL_BALANCE;
-
-      if (parsedAmount > liveBal) {
-        throw new Error(
-          `Insufficient virtual balance. Available: $${liveBal.toFixed(2)} USDC, Attempted: $${parsedAmount.toFixed(2)} USDC.`,
-        );
-      }
-
-      // 2. Insert bet using dynamic profileId (valid UUID)
-      const bet: Bet = {
-        profile_id: profileId,
+      // Record bet via PortfolioContext (optimistic deduction + DB insert + profiles update + auto-refresh)
+      const sanitizedOutcome = String(selectedOutcomeLabel || outcome || 'YES').trim();
+      const betPayload: Omit<Bet, 'id' | 'created_at'> = {
+        profile_id: profileId || DEMO_USER_ID,
         market_id: market.id,
         market_question: market.question,
-        outcome: selectedOutcomeLabel,
+        outcome: sanitizedOutcome,
         shares: parseFloat(shares.toFixed(4)),
         price_per_share: parseFloat(price.toFixed(4)),
         total_invested: parsedAmount,
@@ -217,26 +136,7 @@ export default function BetSlip({
         status: 'OPEN',
       };
 
-      const { error: insertError } = await supabase
-        .from('bets')
-        .insert([bet]);
-
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
-
-      // 3. Decrement user's virtual_balance in profiles by total_invested
-      const updatedBalance = liveBal - parsedAmount;
-      const { error: balanceError } = await supabase
-        .from('profiles')
-        .update({ virtual_balance: updatedBalance })
-        .eq('id', profileId);
-
-      if (balanceError) {
-        console.error('[BetSlip] Balance update failed:', balanceError.message);
-      } else {
-        setProfile({ id: profileId, virtual_balance: updatedBalance });
-      }
+      await recordBet(betPayload);
 
       setSuccess(true);
       onBetPlaced?.();
@@ -331,7 +231,7 @@ export default function BetSlip({
         <div className="flex justify-between text-xs text-[#86868b] font-medium">
           <span>Order Amount</span>
           <span>
-            Available: <strong className="text-[#111113] font-mono">${currentBalance.toFixed(2)}</strong>
+            Available: <strong className="text-[#111113] font-mono">${virtualBalance.toFixed(2)}</strong>
           </span>
         </div>
 
@@ -399,12 +299,12 @@ export default function BetSlip({
                 <span
                   className={cn(
                     'text-[11px] font-semibold px-1.5 py-0.5 rounded border',
-                    outcome === 'YES'
-                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                      : 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
+                    isAffirmative
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
                   )}
                 >
-                  {outcome}
+                  {selectedOutcomeLabel}
                 </span>
               </>
             ) : (
@@ -417,10 +317,6 @@ export default function BetSlip({
           <span className="font-mono font-medium text-[#111113]">
             {price.toFixed(3)} USDC
           </span>
-        </div>
-        <div className="flex justify-between items-center text-[#6e6e73]">
-          <span>Estimated Fee</span>
-          <span className="font-mono font-medium text-[#28a745]">$0.00 (Free)</span>
         </div>
         <div className="h-[1px] bg-[#e5e5ea] my-1" />
         <div className="flex justify-between items-center text-[#111113] pt-0.5">
@@ -440,6 +336,13 @@ export default function BetSlip({
       )}
 
       {/* Status Messages */}
+      {isInsufficientBalance && parsedAmount > 0 && (
+        <div className="flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 border border-amber-200/80">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+          <span>Insufficient balance. Available: ${virtualBalance.toFixed(2)} USDC</span>
+        </div>
+      )}
+
       {error && (
         <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-xs text-red-600 border border-red-100">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -458,14 +361,21 @@ export default function BetSlip({
       <button
         type="button"
         onClick={handlePlaceBet}
-        disabled={isSubmitting || parsedAmount <= 0}
-        className="w-full bg-[#0071e3] hover:bg-[#005bb5] active:scale-[0.99] text-white font-semibold text-sm py-3.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={isSubmitting || parsedAmount <= 0 || isInsufficientBalance}
+        className={cn(
+          'w-full font-semibold text-sm py-3.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2',
+          isInsufficientBalance
+            ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed border border-zinc-300/50'
+            : 'bg-[#0071e3] hover:bg-[#005bb5] active:scale-[0.99] text-white disabled:opacity-50 disabled:cursor-not-allowed',
+        )}
       >
         {isSubmitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Processing Paper Bet…</span>
           </>
+        ) : isInsufficientBalance ? (
+          <span>Insufficient Balance (${virtualBalance.toFixed(2)} Available)</span>
         ) : (
           <>
             <span>Place Bet on {selectedOutcomeLabel}</span>

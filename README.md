@@ -263,11 +263,15 @@ create table public.bets (
   amount numeric not null,              -- Amount staked in USDC
   price numeric not null,               -- Price per share at time of execution
   shares numeric not null,              -- Total contracts acquired
-  potential_payout numeric not null,
   status text default 'open',           -- 'open' | 'resolved_win' | 'resolved_loss'
   ai_assisted boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  constraint bets_outcome_check check (length(trim(outcome)) > 0)
 );
+
+-- Note: If updating an existing table, run:
+-- alter table public.bets drop constraint if exists bets_outcome_check;
+-- alter table public.bets add constraint bets_outcome_check check (length(trim(outcome)) > 0);
 
 -- Profiles Table: Manages virtual balances
 create table public.profiles (

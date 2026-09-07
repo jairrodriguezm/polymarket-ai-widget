@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Sparkles, ArrowLeft, X } from 'lucide-react';
 import type { Market, AIRecommendation } from '@/types';
 import { LogoIcon } from '@/components/ui/Logo';
@@ -8,12 +8,14 @@ import MarketSearch from './MarketSearch';
 import MarketDetails from './MarketDetails';
 import AIAssistant from './AIAssistant';
 import BetSlip from './BetSlip';
+import ScrollToTop from './ScrollToTop';
 
 export default function PolymarketWidget() {
   const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
   const [appliedRecommendation, setAppliedRecommendation] =
     useState<AIRecommendation | null>(null);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const leftSectionRef = useRef<HTMLElement>(null);
 
   // Prevent background body scrolling strictly on mobile viewports when the mobile drawer is explicitly open
   useEffect(() => {
@@ -67,10 +69,17 @@ export default function PolymarketWidget() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
       {/* ── Left Column: Markets Explorer (Full width on mobile, 7 cols on desktop) ── */}
-      <section className="w-full lg:col-span-7 space-y-5 min-h-screen">
+      <section
+        ref={leftSectionRef}
+        className="w-full lg:col-span-7 space-y-5 min-h-screen relative"
+      >
         <MarketSearch
           selectedMarket={selectedMarket}
           onSelectMarket={handleSelectMarket}
+        />
+        <ScrollToTop
+          containerRef={leftSectionRef}
+          isMobileDrawerOpen={isMobileDrawerOpen}
         />
       </section>
 
