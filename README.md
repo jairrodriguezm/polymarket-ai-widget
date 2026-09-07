@@ -94,6 +94,123 @@ sequenceDiagram
 
 ---
 
+## 🧠 Multi-Agent AI Deliberation Engine: How Agents Work & Decide
+
+Rather than relying on a single monolithic LLM prompt that suffers from bias, hallucinations, and uncalibrated probabilities, the terminal employs a **modular 3-Agent Deliberation Architecture**. This simulates an institutional investment committee where specialized AI personas independently examine the market across orthogonal analytical dimensions before synthesizing a unified consensus:
+
+```mermaid
+graph LR
+  subgraph Inputs ["Input Ingestion"]
+    MktData["Polymarket Market Rules & Implied Odds"]
+    LiveNews["Tavily RAG Live News Stream"]
+  end
+
+  subgraph Committee ["3-Agent Deliberation Committee"]
+    A1["🛡️ Resolution Auditor<br/>• Contract Terms & Criteria<br/>• Ambiguity Detection<br/>• Settlement Source Verification"]
+    A2["📰 Sentiment & News Hunter<br/>• Breaking Catalyst Extraction<br/>• Real-Time Reporting<br/>• Multi-Source Cross-Check"]
+    A3["📐 Risk & Value Arbiter<br/>• Implied vs True Probability<br/>• +EV Discrepancy Matrix<br/>• Kelly Sizing Calibration"]
+  end
+
+  subgraph Consensus ["Consensus Synthesis"]
+    Syn["Gemini Structured Synthesis Engine"]
+    Out["Deterministic Execution Recommendation<br/>Outcome + Conviction % + +EV Edge + Sizing"]
+  end
+
+  MktData --> A1
+  LiveNews --> A2
+  MktData --> A3
+  LiveNews --> A3
+
+  A1 --> Syn
+  A2 --> Syn
+  A3 --> Syn
+  Syn --> Out
+```
+
+### 1. Committee Personas & Division of Labor
+
+| Agent Persona | Focus Domain | Primary Sources & Heuristics | Decision Output |
+| :--- | :--- | :--- | :--- |
+| **🛡️ Resolution Auditor** | Rules, Settlement Criteria & Contract Integrity | Polymarket contract terms, resolution sources (AP, BLS, SEC, government gazettes), expiration timestamps, and conditional clauses. | Validates resolution viability, assesses settlement dispute risk, and votes on outcome conformity with strict contractual criteria. |
+| **📰 Sentiment & News Hunter** | Live Ground Truth & External Signals | Tavily Search API (real-time news indexing, journalistic articles, breaking wires, press releases, and polling datasets). | Identifies catalysts, filters noise from factual developments, cross-references source reliability, and extracts real-time sentiment direction. |
+| **📐 Risk & Value Arbiter** | Mathematical Edge & Portfolio Sizing | Order book pricing ($P_{\text{market}}$), implied probability distribution, Fractional Kelly Criterion, and asymmetric risk/reward. | Calculates expected value ($+EV$), identifies pricing dislocations between market odds and committee conviction, and computes optimal position size. |
+
+---
+
+### 2. The 5-Phase Deliberation & Decision Pipeline
+
+```
+[Phase 1: Ingestion] ──▶ [Phase 2: RAG Retrieval] ──▶ [Phase 3: Agent Scrutiny] ──▶ [Phase 4: Consensus] ──▶ [Phase 5: Slip Routing]
+```
+
+1. **Phase 1: Contract Ingestion & Parameter Normalization**
+   - When a market is selected, the application ingests the market payload from Polymarket's Gamma API.
+   - Extracts the core question, detailed description/rules, resolution timestamp (`endDate`), outcome token identifiers (`clobTokenIds`), and live trading prices.
+   - Dynamically parses outcome identifiers (e.g., `["Yes", "No"]`, `["Over 2.5", "Under 2.5"]`, or candidate names) to eliminate binary assumptions.
+
+2. **Phase 2: Live News Retrieval (Tavily RAG)**
+   - The route handler `/api/analyze-market` queries the Tavily API using high-authority news filtering.
+   - Extracts validated article snippets, publication timestamps, and source URLs.
+   - This grounds the AI in up-to-the-minute real-world events, ensuring recommendations reflect developments that occurred minutes prior rather than static pre-training weights.
+
+3. **Phase 3: Multi-Perspective Agent Deliberation**
+   - **Resolution Auditor:** Interrogates whether the condition is objectively verifiable. For example, in a geopolitical market: *"Does the contract require official treaty ratification or merely a signed ceasefire declaration?"* Ambiguity triggers a confidence penalty.
+   - **News Hunter:** Analyzes real-time reporting for confirmed milestones. Disregards partisan editorializing, extracts verifiable consensus facts, and weights corroborating reports.
+   - **Value Arbiter:** Formulates an unconstrained probability distribution $P_{\text{true}}$ and compares it directly with market pricing.
+
+4. **Phase 4: Structured Consensus Synthesis (Gemini Engine)**
+   - Google Gemini receives a multi-agent system prompt combining contract specifications and indexed news context.
+   - Enforces a deterministic JSON Schema via Gemini's Structured Outputs (`Type.OBJECT`):
+     ```typescript
+     interface AIRecommendation {
+       recommendedOutcome: 'YES' | 'NO';
+       confidence: number;         // 0 - 100 percentage
+       rationale: string;          // 2-3 sentence executive synthesis
+       recommendedBetSize: number; // 1 - 100 USDC (Kelly-proportional)
+     }
+     ```
+   - The model acts as the Committee Chair, reconciling differing views into a unified consensus recommendation.
+
+5. **Phase 5: Execution Sizing & One-Click Routing**
+   - The client renders the verdict card, detailing the individual agent votes, source counts, and calculated $+EV$ edge.
+   - Clicking **"Apply Consensus to Bet Slip"** injects the recommended outcome and position size directly into the order form and smoothly focuses the execution input.
+
+---
+
+### 3. Mathematical Edge Formulation & Position Sizing
+
+The Committee does not simply predict *"Who will win?"*—it identifies **pricing inefficiencies** ($+EV$ opportunities).
+
+#### A. Market Implied Probability vs. Committee Conviction
+Given the contract price for outcome $i$, the market's implied probability is:
+$P_{\text{implied}} = \text{Price}_i \times 100\%$
+
+If the consensus conviction $P_{\text{conviction}} > P_{\text{implied}}$, a positive expected value edge exists:
+$\text{EV Edge (\%)} = P_{\text{conviction}} - P_{\text{implied}}$
+
+*Example:* If YES trades at **42¢** ($P_{\text{implied}} = 42\%$) but the Committee calculates a **60% conviction** based on breaking polling data, the market is mispricing the asset by **+18% EV Edge**.
+
+#### B. Fractional Kelly Criterion for Position Sizing
+To prevent portfolio ruin while compounding capital, the Value Arbiter applies a conservative **Fractional Kelly** sizing heuristic:
+$f^* = \frac{b \cdot p - q}{b}$
+Where:
+- $p = \text{Assessed probability of winning}$
+- $q = 1 - p$
+- $b = \text{Net odds received} = \frac{1 - \text{Price}}{\text{Price}}$
+
+The system normalizes this fractional stake into a calibrated allocation between **\$1.00 and \$100.00 USDC**, scaling conservatively when conviction is marginal and aggressively when high-conviction dislocations are discovered.
+
+---
+
+### 4. Anti-Hallucination & Determinism Guardrails
+
+- **Zero-Unchecked-Knowledge Policy:** If breaking news is unavailable, the system explicitly acknowledges missing external context and bases its confidence strictly on base rates and contract ambiguity risks.
+- **Strict JSON Schema Enforcement:** Gemini generation uses `responseMimeType: 'application/json'` with an enforced typed schema, preventing markdown formatting drift, conversational filler, or parsing crashes.
+- **Dynamic Outcome Alignment:** Outcomes are mapped programmatically back to the market's specific contract outcome array, preventing YES/NO inversion on negatively framed questions (e.g., *"Will X fail to happen?"*).
+- **Client-Side Cache Layer:** Deliberation results are indexed client-side by `market.id` to prevent redundant LLM invocations and guarantee instant re-renders when navigating between markets.
+
+---
+
 ## 🚀 Key Features
 
 ### 1. Market Feed & Dynamic Normalization
