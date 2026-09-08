@@ -52,12 +52,29 @@ export interface Bet {
   created_at?: string;
 }
 
-/** AI recommendation returned by the Gemini analysis route. */
+export interface AgentVote {
+  name: string;
+  role: string;
+  vote: string;
+  confidence: string;
+  status: string;
+}
+
+export interface CommitteeConsensus {
+  recommendedOutcome: string;
+  conviction: number;
+  rationale: string;
+}
+
+/** AI recommendation returned by the analysis committee route. */
 export interface AIRecommendation {
-  recommendedOutcome: 'YES' | 'NO';
+  recommendedOutcome: 'YES' | 'NO' | string;
   confidence: number;
   rationale: string;
   recommendedBetSize: number;
+  consensus?: CommitteeConsensus;
+  agents?: AgentVote[];
+  tier?: 'openai' | 'gemini' | 'algorithmic';
 }
 
 /** API error response shape. */
@@ -70,4 +87,6 @@ export interface APIError {
 export interface AnalyzeMarketRequest {
   marketTitle: string;
   description: string;
+  outcomes?: string[];
+  outcomePrices?: number[];
 }

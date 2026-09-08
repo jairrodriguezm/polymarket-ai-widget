@@ -164,6 +164,21 @@ export default function AIAssistant({
       : 50;
 
   // Agent 1: Resolution Auditor Metrics
+  const auditorAgent = recommendation?.agents?.find((a) =>
+    a.name.toLowerCase().includes('auditor'),
+  );
+  const newsAgent = recommendation?.agents?.find(
+    (a) =>
+      a.name.toLowerCase().includes('news') ||
+      a.name.toLowerCase().includes('sentiment'),
+  );
+  const arbiterAgent = recommendation?.agents?.find(
+    (a) =>
+      a.name.toLowerCase().includes('arbiter') ||
+      a.name.toLowerCase().includes('risk') ||
+      a.name.toLowerCase().includes('value'),
+  );
+
   const auditorConfidence = Math.min(
     99,
     Math.max(65, Math.round(recConfidence * 1.02)),
@@ -205,6 +220,8 @@ export default function AIAssistant({
         body: JSON.stringify({
           marketTitle: market.question,
           description: market.description ?? '',
+          outcomes: market.outcomes,
+          outcomePrices: market.outcomePrices,
         }),
       });
 
@@ -262,6 +279,15 @@ export default function AIAssistant({
             <span className="text-[10px] font-semibold text-zinc-600 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200/60">
               3 Agents Active
             </span>
+            {recommendation?.tier && (
+              <span className="text-[10px] font-semibold text-zinc-600 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200/60">
+                {recommendation.tier === 'openai'
+                  ? 'GPT-4o mini'
+                  : recommendation.tier === 'gemini'
+                    ? 'Gemini 2.0'
+                    : 'Algorithmic'}
+              </span>
+            )}
           </div>
         </div>
 
@@ -301,6 +327,7 @@ export default function AIAssistant({
       <div className="flex flex-col gap-2 w-full">
         {/* Agent 1: Resolution Auditor */}
         <div
+          title={auditorAgent?.status || 'Contract resolution parameters and settlement criteria'}
           className={cn(
             'flex items-center justify-between p-2.5 rounded-xl border transition-colors',
             isLoading && currentStep === 1
@@ -335,15 +362,15 @@ export default function AIAssistant({
                 <span
                   className={cn(
                     'px-2 py-0.5 rounded-md font-semibold text-[10px]',
-                    isOutcomeYes
+                    (auditorAgent?.vote || recOutcomeLabel).toUpperCase() === outcome0.toUpperCase()
                       ? 'bg-emerald-100/80 text-emerald-800'
                       : 'bg-rose-100/80 text-rose-800',
                   )}
                 >
-                  Vote: {recOutcomeLabel}
+                  Vote: {auditorAgent?.vote || recOutcomeLabel}
                 </span>
                 <span className="font-mono text-[10px] font-semibold text-zinc-600">
-                  {auditorConfidence}%
+                  {auditorAgent?.confidence || `${auditorConfidence}%`}
                 </span>
               </div>
             ) : (
@@ -356,6 +383,7 @@ export default function AIAssistant({
 
         {/* Agent 2: Sentiment & News Hunter */}
         <div
+          title={newsAgent?.status || 'Real-time news search and sentiment indicators'}
           className={cn(
             'flex items-center justify-between p-2.5 rounded-xl border transition-colors',
             isLoading && currentStep === 2
@@ -390,15 +418,15 @@ export default function AIAssistant({
                 <span
                   className={cn(
                     'px-2 py-0.5 rounded-md font-semibold text-[10px]',
-                    isOutcomeYes
+                    (newsAgent?.vote || recOutcomeLabel).toUpperCase() === outcome0.toUpperCase()
                       ? 'bg-emerald-100/80 text-emerald-800'
                       : 'bg-rose-100/80 text-rose-800',
                   )}
                 >
-                  Signal: {recOutcomeLabel}
+                  Signal: {newsAgent?.vote || recOutcomeLabel}
                 </span>
                 <span className="text-[10px] text-zinc-500 font-medium">
-                  {sourcesParsed} sources
+                  {newsAgent?.confidence || `${sourcesParsed} sources`}
                 </span>
               </div>
             ) : (
@@ -411,6 +439,7 @@ export default function AIAssistant({
 
         {/* Agent 3: Risk & Value Arbiter */}
         <div
+          title={arbiterAgent?.status || 'Quantitative risk pricing and probability modeling'}
           className={cn(
             'flex items-center justify-between p-2.5 rounded-xl border transition-colors',
             isLoading && currentStep === 3
@@ -443,10 +472,10 @@ export default function AIAssistant({
             ) : recommendation ? (
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded-md font-semibold text-[10px] bg-amber-100/80 text-amber-800">
-                  +EV Edge: +{evEdgePercent}%
+                  {arbiterAgent?.vote ? `Vote: ${arbiterAgent.vote}` : `+EV Edge: +${evEdgePercent}%`}
                 </span>
                 <span className="text-[10px] text-zinc-500 font-mono">
-                  ${recBetSize} rec
+                  {arbiterAgent?.confidence || `$${recBetSize} rec`}
                 </span>
               </div>
             ) : (
