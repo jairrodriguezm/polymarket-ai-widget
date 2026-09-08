@@ -11,6 +11,15 @@
 
 ---
 
+## 📹 Video Walkthrough & App Demo
+
+[![Polymarket AI Predictor Widget Demo](https://cdn.loom.com/sessions/thumbnails/e55cff43f79b45089bf32b201e99a31b-4cc5d4ae848c9445.gif)](https://www.loom.com/share/e55cff43f79b45089bf32b201e99a31b)
+
+> 📺 **[Watch the Full Video Walkthrough on Loom (10 min)](https://www.loom.com/share/e55cff43f79b45089bf32b201e99a31b)**  
+> A complete architectural and operational explanation of the application: live market discovery, real-time 3-agent deliberation committee (Resolution Auditor, News Hunter via Tavily RAG, and Risk & Value Arbiter), paper trading order execution, reactive virtual balance tracking, and mobile responsiveness.
+
+---
+
 ## ⚡ Executive Summary
 
 Prediction markets reflect real-world probabilities through financial consensus, but retail traders often encounter two major barriers:
