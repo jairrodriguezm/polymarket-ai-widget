@@ -84,39 +84,39 @@ sequenceDiagram
   participant API as Next.js Route Handlers
   participant Rate as Cooldown Limiter
   participant Tavily as Tavily Search (RAG)
-  participant AI as Multi-Tier AI Engine (OpenAI / Gemini / Algo)
+  participant AI as Multi-Tier AI Engine
   participant DB as Supabase (PostgreSQL)
 
-  Trader->>Client: Selects market card & filters by sort criteria
-  Client->>API: GET /api/markets?sort=volume&category=all
-  API-->>Client: Normalized entities (parsed outcomes & clean prices)
+  Trader->>Client: Selects market card and filters by sort criteria
+  Client->>API: GET /api/markets?sort=volume
+  API-->>Client: Normalized entities (parsed outcomes and prices)
 
   Trader->>Client: Opens Market Detail
-  Client->>API: POST /api/analyze-market (title, description, outcomes, prices)
-  API->>Rate: Verify cooldown (30s window; bypassed in development)
-  Note over Client: Deliberation progress bar: Auditor -> News -> Arbiter...
-  API->>Tavily: Search live news (quota errors 429 handled gracefully)
+  Client->>API: POST /api/analyze-market (title, outcomes, prices)
+  API->>Rate: Verify cooldown (30s window - bypassed in development)
+  Note over Client: Deliberation: Auditor to News to Arbiter
+  API->>Tavily: Search live news (quota limits handled gracefully)
   
   alt Tier 1: OpenAI Available
     API->>AI: OpenAI gpt-4o-mini (JSON Mode)
-    AI-->>API: Committee Consensus & Agent Votes
-  else Tier 2: OpenAI Quota / Rate Error
+    AI-->>API: Committee Consensus and Agent Votes
+  else Tier 2: OpenAI Quota or Rate Error
     API->>AI: Gemini 2.0 Flash Failover
-    AI-->>API: Committee Consensus & Agent Votes
+    AI-->>API: Committee Consensus and Agent Votes
   else Tier 3: Total External Provider Failure
-    API->>AI: Statistical Algorithmic Consensus (+EV Order-Book Spread)
+    API->>AI: Statistical Algorithmic Consensus (+EV Spread)
     AI-->>API: Guaranteed Mathematical Consensus
   end
 
   API-->>Client: Return normalized consensus, agent votes, tier badge
-  Client->>Client: Render live agent roster with status tooltips & engine tier
+  Client->>Client: Render live agent roster with status tooltips
 
   Trader->>Client: Clicks "Apply Consensus to Bet Slip"
-  Client->>Client: Auto-selects outcome tab & recalculates potential payout
-  Trader->>Client: Inputs stake ($85.00 USDC) & submits order
-  Client->>DB: INSERT into `bets` & UPDATE `profiles.virtual_balance`
-  DB-->>Client: Commit confirmed (Balance: $1000.00 -> $915.00)
-  Client->>Client: Updates balance chip & unlocks "My Portfolio" entry
+  Client->>Client: Auto-selects outcome tab and recalculates payout
+  Trader->>Client: Inputs stake ($85.00 USDC) and submits order
+  Client->>DB: INSERT into bets and UPDATE profiles virtual_balance
+  DB-->>Client: Commit confirmed (Balance: $1000.00 to $915.00)
+  Client->>Client: Updates balance chip and unlocks My Portfolio entry
 ```
 
 ---
